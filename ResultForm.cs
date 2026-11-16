@@ -161,6 +161,7 @@ namespace frmesetunins
                 Size         = new Size(100, 34),
                 DialogResult = DialogResult.OK,
             };
+            btnClose.Click += (s, e) => Close();
             Controls.Add(btnClose);
             AcceptButton = btnClose;
             CancelButton = btnClose;
