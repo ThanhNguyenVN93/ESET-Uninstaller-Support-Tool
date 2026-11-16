@@ -839,7 +839,7 @@ namespace frmesetunins
 
         // ── Uninstaller staging (download latest in normal mode) ──────────
 
-        private static string LocalDir()
+        internal static string LocalDir()
         {
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),

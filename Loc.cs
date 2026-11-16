@@ -107,6 +107,12 @@ namespace frmesetunins
             { "result_openlog",   "Mở log chi tiết" },
             { "result_close",     "Đóng" },
             { "result_nolog",     "(Không có log.)" },
+            { "update_available", "Có phiên bản mới: {0}" },
+            { "update_btn",       "Cập nhật" },
+            { "update_downloading","Đang tải bản cập nhật..." },
+            { "update_confirm",   "Đã tải xong phiên bản {0}.\nỨng dụng sẽ đóng lại và tự cập nhật.\n\nTiếp tục?" },
+            { "update_confirm_title","Cập nhật" },
+            { "update_fail",      "Không tải được bản cập nhật." },
         };
 
         private static readonly Dictionary<string, string> En = new Dictionary<string, string>
@@ -169,6 +175,12 @@ namespace frmesetunins
             { "result_openlog",   "Open detailed log" },
             { "result_close",     "Close" },
             { "result_nolog",     "(No log.)" },
+            { "update_available", "New version available: {0}" },
+            { "update_btn",       "Update" },
+            { "update_downloading","Downloading update..." },
+            { "update_confirm",   "Version {0} downloaded.\nThe app will close and update itself.\n\nContinue?" },
+            { "update_confirm_title","Update" },
+            { "update_fail",      "Could not download the update." },
         };
     }
 }

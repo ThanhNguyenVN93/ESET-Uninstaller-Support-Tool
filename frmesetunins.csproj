@@ -55,6 +55,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="AutoLogon.cs" />
     <Compile Include="Loc.cs" />
+    <Compile Include="Updater.cs" />
     <Compile Include="Verify.cs" />
     <Compile Include="ResultForm.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

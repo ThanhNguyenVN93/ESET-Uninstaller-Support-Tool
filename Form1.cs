@@ -20,6 +20,7 @@ namespace frmesetunins
         private CheckBox chkClean;
         private ProgressBar pbWork;
         private ToolTip  toolTip;
+        private LinkLabel lnkUpdate;
 
         private Timer  countdownTimer;
         private Timer  abortTimer;
@@ -29,6 +30,7 @@ namespace frmesetunins
         private enum Phase { Idle, Aborting, Done }
         private Phase phase = Phase.Idle;
         private bool  noEset;
+        private Updater.ReleaseInfo pendingUpdate;
 
         public Form1()
         {
@@ -155,6 +157,16 @@ namespace frmesetunins
 
             toolTip = new ToolTip { AutoPopDelay = 8000, InitialDelay = 400, ReshowDelay = 100 };
 
+            lnkUpdate = new LinkLabel
+            {
+                Location  = new Point(16, 10),
+                AutoSize  = true,
+                Font      = new Font("Segoe UI", 8.5f, FontStyle.Regular),
+                Visible   = false,
+            };
+            lnkUpdate.LinkClicked += (s, ev) => ApplyPendingUpdate();
+            Controls.Add(lnkUpdate);
+
             ApplyLanguage();
 
             // Background integrity check of the embedded uninstaller (best-effort).
@@ -166,6 +178,28 @@ namespace frmesetunins
             });
             vt.IsBackground = true;
             vt.Start();
+
+            // Check for updates in the background (normal mode only).
+            var ut = new System.Threading.Thread(() =>
+            {
+                var info = Updater.CheckForUpdate();
+                if (info != null)
+                {
+                    try
+                    {
+                        BeginInvoke(new Action(() =>
+                        {
+                            pendingUpdate = info;
+                            lnkUpdate.Text = string.Format(Loc.T("update_available"), info.TagName)
+                                + "  [" + Loc.T("update_btn") + "]";
+                            lnkUpdate.Visible = true;
+                        }));
+                    }
+                    catch { }
+                }
+            });
+            ut.IsBackground = true;
+            ut.Start();
 
             // If ESET isn't installed, don't auto-count down into a pointless
             // Safe Mode trip — tell the user and let them act manually.
@@ -398,6 +432,48 @@ namespace frmesetunins
             btnAbort.Visible    = false;
             lblStatus.ForeColor = Color.FromArgb(0, 150, 60);
             lblStatus.Text      = Loc.T("aborted");
+        }
+
+        private void ApplyPendingUpdate()
+        {
+            if (pendingUpdate == null) return;
+            lnkUpdate.Text = Loc.T("update_downloading");
+            lnkUpdate.Enabled = false;
+
+            var t = new System.Threading.Thread(() =>
+            {
+                string staged;
+                bool ok = Updater.DownloadAndStage(pendingUpdate, out staged);
+                try
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        if (!ok || staged == null)
+                        {
+                            lnkUpdate.Text = Loc.T("update_fail");
+                            lnkUpdate.Enabled = true;
+                            return;
+                        }
+                        if (MessageBox.Show(
+                                string.Format(Loc.T("update_confirm"), pendingUpdate.TagName),
+                                Loc.T("update_confirm_title"),
+                                MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                        {
+                            Updater.ApplyUpdate(staged);
+                            Close();
+                        }
+                        else
+                        {
+                            lnkUpdate.Text = string.Format(Loc.T("update_available"), pendingUpdate.TagName)
+                                + "  [" + Loc.T("update_btn") + "]";
+                            lnkUpdate.Enabled = true;
+                        }
+                    }));
+                }
+                catch { }
+            });
+            t.IsBackground = true;
+            t.Start();
         }
 
         private static Label MakeLabel(Point loc, Size size, float fontSize,
