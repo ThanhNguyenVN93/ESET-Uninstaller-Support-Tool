@@ -45,6 +45,23 @@ namespace frmesetunins
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            // Never crash silently: route all unhandled errors to the log + a
+            // friendly dialog.
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (s, e) => CrashHandler(e.Exception);
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => CrashHandler(e.ExceptionObject as Exception);
+
+            Loc.LoadSaved();
+
+            if (args != null && (Array.IndexOf(args, "--help") >= 0 ||
+                                 Array.IndexOf(args, "-h") >= 0 ||
+                                 Array.IndexOf(args, "/?") >= 0))
+            {
+                MessageBox.Show(Loc.T("help_text"), Loc.T("help_title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
             bool wantResult = args != null && Array.IndexOf(args, "--result") >= 0;
 
             // Defensive: if a previous arm never reached Safe Mode (aborted,
@@ -107,7 +124,48 @@ namespace frmesetunins
                 return;
             }
 
-            Application.Run(new Form1());
+            if (!IsAdmin())
+            {
+                MessageBox.Show(Loc.T("need_admin"), Loc.T("app_title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Single instance: a second GUI could race on the registry/BCD.
+            bool createdApp;
+            using (var appMutex = new Mutex(true, @"Global\frmesetunins_app", out createdApp))
+            {
+                if (!createdApp)
+                {
+                    MessageBox.Show(Loc.T("already_running"), Loc.T("app_title"),
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                Application.Run(new Form1());
+            }
+        }
+
+        private static void CrashHandler(Exception ex)
+        {
+            try { Log("FATAL: " + ex); } catch { }
+            try
+            {
+                MessageBox.Show(Loc.T("crash") + "\n\n" + (ex != null ? ex.Message : "") +
+                    "\n\n" + LogFilePath, Loc.T("crash_title"),
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            catch { }
+        }
+
+        internal static bool IsAdmin()
+        {
+            try
+            {
+                using (var id = System.Security.Principal.WindowsIdentity.GetCurrent())
+                    return new System.Security.Principal.WindowsPrincipal(id)
+                        .IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+            }
+            catch { return false; }
         }
 
         // ── Silent mode ───────────────────────────────────────────────────
@@ -117,6 +175,7 @@ namespace frmesetunins
             try
             {
                 string exe = StageSelfLocally();
+                CreateRestorePoint("Before ESET removal (frmesetunins)");
                 TryStageLatestUninstaller(out string _);
                 bool interactive = Array.IndexOf(args, "--select") >= 0;
                 bool clean       = Array.IndexOf(args, "--cleanleftovers") >= 0;
@@ -189,6 +248,36 @@ namespace frmesetunins
         {
             try { Process.Start(new ProcessStartInfo(IssuesUrl) { UseShellExecute = true }); }
             catch { }
+        }
+
+        internal static void OpenLogFolder()
+        {
+            try { Process.Start("explorer.exe", "/select,\"" + LogFilePath + "\""); }
+            catch { }
+        }
+
+        // Best-effort System Restore point (needs System Protection enabled; must
+        // be created in NORMAL mode — VSS does not run in Safe Mode).
+        internal static void CreateRestorePoint(string description)
+        {
+            try
+            {
+                var scope = new System.Management.ManagementScope(@"\\.\root\default");
+                var path  = new System.Management.ManagementPath("SystemRestore");
+                using (var cls = new System.Management.ManagementClass(scope, path, null))
+                {
+                    var inParams = cls.GetMethodParameters("CreateRestorePoint");
+                    inParams["Description"]      = description;
+                    inParams["RestorePointType"] = 12;  // APPLICATION_INSTALL
+                    inParams["EventType"]        = 100; // BEGIN_SYSTEM_CHANGE
+                    var outParams = cls.InvokeMethod("CreateRestorePoint", inParams, null);
+                    Log("Restore point ReturnValue=" + (outParams != null ? outParams["ReturnValue"] : "n/a"));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log("Restore point not created (System Protection may be off): " + ex.Message);
+            }
         }
 
         // ── Safe Mode entry point ─────────────────────────────────────────
@@ -467,6 +556,7 @@ namespace frmesetunins
                     return true;
                 }
 
+                CreateRestorePoint("Before ESET removal (frmesetunins /nosafemode)");
                 BackupNetworkSettings();
                 Log("Before uninstall: " + EsetStateSnapshot());
                 RunEmbeddedUninstaller(false, true); // /force /nosafemode
@@ -822,6 +912,15 @@ namespace frmesetunins
             Path.Combine(Path.GetTempPath(), "frmesetunins.log");
 
         internal static string LogFilePath => LogPath;
+
+        internal static string AppVersion
+        {
+            get
+            {
+                var v = Assembly.GetExecutingAssembly().GetName().Version;
+                return v.Major + "." + v.Minor + "." + v.Build;
+            }
+        }
 
         internal static void Log(string msg)
         {

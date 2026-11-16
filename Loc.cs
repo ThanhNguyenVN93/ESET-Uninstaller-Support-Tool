@@ -19,9 +19,18 @@ namespace frmesetunins
                 ? Lang.Vi : Lang.En;
         }
 
+        // Override the culture default with a previously saved choice.
+        internal static void LoadSaved()
+        {
+            string s = Program.GetState("Lang");
+            if (s == "vi") Current = Lang.Vi;
+            else if (s == "en") Current = Lang.En;
+        }
+
         internal static void Toggle()
         {
             Current = Current == Lang.Vi ? Lang.En : Lang.Vi;
+            try { Program.SetState("Lang", Current == Lang.Vi ? "vi" : "en"); } catch { }
         }
 
         /// <summary>Look up a key for the current language (falls back to the key).</summary>
@@ -54,6 +63,15 @@ namespace frmesetunins
             { "result_restorenet","Khôi phục mạng" },
             { "restored_ok",      "Đã khôi phục cấu hình mạng." },
             { "restored_fail",    "Không tìm thấy bản sao lưu mạng để khôi phục." },
+            { "btn_about",        "Giới thiệu" },
+            { "result_openfolder","Mở thư mục log" },
+            { "crash_title",      "Lỗi không mong muốn" },
+            { "crash",            "Đã xảy ra lỗi không mong muốn. Chi tiết đã ghi vào log:" },
+            { "need_admin",       "Công cụ cần quyền Administrator để chạy." },
+            { "already_running",  "Công cụ đang chạy rồi." },
+            { "help_title",       "Hướng dẫn dòng lệnh" },
+            { "help_text",        "ESET Uninstaller Support Tool\n\nTham số dòng lệnh:\n  --auto            Không giao diện, tự vào Safe Mode\n  --select          Chọn sản phẩm ESET thủ công\n  --cleanleftovers  Dọn file/service ESET còn sót\n  --password=<mk>   Tự động đăng nhập (mật khẩu Windows)\n  --nosafemode      Gỡ ngay trong Windows bình thường (không reboot)\n  --help            Hiện trợ giúp này\n\nMã thoát: 0=xong, 1=còn ESET, 2=lỗi, 3=không có ESET" },
+            { "about_text",       "ESET Uninstaller Support Tool\nPhiên bản {0}\n\nTự động gỡ ESET trong Safe Mode.\nGiấy phép MIT.\n\n{1}" },
             { "status_downloading","Đang tải ESET Uninstaller mới nhất..." },
             { "status_preparing", "Đang chuẩn bị khởi động lại vào Safe Mode..." },
             { "err_prefix",       "Lỗi: " },
@@ -100,6 +118,15 @@ namespace frmesetunins
             { "result_restorenet","Restore network" },
             { "restored_ok",      "Network configuration restored." },
             { "restored_fail",    "No network backup found to restore." },
+            { "btn_about",        "About" },
+            { "result_openfolder","Open log folder" },
+            { "crash_title",      "Unexpected error" },
+            { "crash",            "An unexpected error occurred. Details were written to the log:" },
+            { "need_admin",       "This tool must run as Administrator." },
+            { "already_running",  "The tool is already running." },
+            { "help_title",       "Command-line help" },
+            { "help_text",        "ESET Uninstaller Support Tool\n\nCommand-line flags:\n  --auto            No UI; arm + reboot into Safe Mode\n  --select          Pick the ESET product manually\n  --cleanleftovers  Remove leftover ESET files/services\n  --password=<pwd>  Unattended autologon (Windows password)\n  --nosafemode      Uninstall now in normal Windows (no reboot)\n  --help            Show this help\n\nExit codes: 0=done, 1=still present, 2=error, 3=no ESET" },
+            { "about_text",       "ESET Uninstaller Support Tool\nVersion {0}\n\nAutomatically removes ESET in Safe Mode.\nMIT License.\n\n{1}" },
             { "status_downloading","Downloading the latest ESET Uninstaller..." },
             { "status_preparing", "Preparing to restart into Safe Mode..." },
             { "err_prefix",       "Error: " },

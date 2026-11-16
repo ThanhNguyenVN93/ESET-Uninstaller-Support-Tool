@@ -14,6 +14,7 @@ namespace frmesetunins
         private Button   btnCancel;
         private Button   btnLang;
         private Button   btnReport;
+        private Button   btnAbout;
         private Button   btnAbort;
         private CheckBox chkSelect;
         private CheckBox chkClean;
@@ -106,6 +107,17 @@ namespace frmesetunins
             btnReport.Click += (s, ev) => Program.OpenIssues();
             Controls.Add(btnReport);
 
+            btnAbout = new Button
+            {
+                Location  = new Point(228, 300),
+                Size      = new Size(104, 30),
+                Font      = new Font("Segoe UI", 9, FontStyle.Regular),
+                FlatStyle = FlatStyle.Flat,
+                Cursor    = Cursors.Hand,
+            };
+            btnAbout.Click += (s, ev) => ShowAbout();
+            Controls.Add(btnAbout);
+
             btnCancel = new Button
             {
                 Location  = new Point(424, 300),
@@ -137,12 +149,13 @@ namespace frmesetunins
 
         private void ApplyLanguage()
         {
-            Text              = Loc.T("app_title");
+            Text              = Loc.T("app_title") + "  v" + Program.AppVersion;
             btnAction.Text    = Loc.T("btn_restart");
             btnNoSafeMode.Text = Loc.T("btn_nosafemode");
             btnCancel.Text    = Loc.T("btn_cancel");
             btnLang.Text      = Loc.T("btn_lang");
             btnReport.Text    = Loc.T("btn_report");
+            btnAbout.Text     = Loc.T("btn_about");
             btnAbort.Text     = Loc.T("abort_btn");
             chkSelect.Text    = Loc.T("chk_select");
             chkClean.Text     = Loc.T("chk_clean");
@@ -222,6 +235,9 @@ namespace frmesetunins
                 // relaunch works even from a network share (Safe Mode has no net).
                 string exe = Program.StageSelfLocally();
 
+                // Safety net before anything destructive (needs System Protection).
+                Program.CreateRestorePoint("Before ESET removal (frmesetunins)");
+
                 lblStatus.Text = Loc.T("status_downloading");
                 Application.DoEvents();
                 Program.TryStageLatestUninstaller(out string _);
@@ -274,6 +290,13 @@ namespace frmesetunins
             });
             t.IsBackground = true;
             t.Start();
+        }
+
+        private void ShowAbout()
+        {
+            MessageBox.Show(
+                string.Format(Loc.T("about_text"), Program.AppVersion, Program.IssuesUrl),
+                Loc.T("btn_about"), MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void ShowResultAndClose()

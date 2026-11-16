@@ -117,15 +117,24 @@ namespace frmesetunins
             };
             Controls.Add(btnRestoreNet);
 
-            // Row 2: report + close.
+            // Row 2: report + open folder + close.
             var btnReport = new Button
             {
                 Text     = Loc.T("btn_report"),
                 Location = new Point(16, 320),
-                Size     = new Size(200, 32),
+                Size     = new Size(190, 32),
             };
             btnReport.Click += (s, e) => Program.OpenIssues();
             Controls.Add(btnReport);
+
+            var btnFolder = new Button
+            {
+                Text     = Loc.T("result_openfolder"),
+                Location = new Point(216, 320),
+                Size     = new Size(150, 32),
+            };
+            btnFolder.Click += (s, e) => Program.OpenLogFolder();
+            Controls.Add(btnFolder);
 
             var btnClose = new Button
             {
