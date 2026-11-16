@@ -17,9 +17,9 @@ namespace frmesetunins
 
             this.AutoScaleMode       = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.ClientSize          = new System.Drawing.Size(500, 200);
+            this.ClientSize          = new System.Drawing.Size(560, 340);
             this.Name                = "Form1";
-            this.Text                = "Safe Mode Uninstaller";
+            this.Text                = "ESET Uninstaller Support Tool";
             this.StartPosition       = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.BackColor           = System.Drawing.Color.White;
             this.Font                = new System.Drawing.Font("Segoe UI", 9.75F);

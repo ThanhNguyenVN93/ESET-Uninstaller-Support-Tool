@@ -1,0 +1,56 @@
+name: Bug report / Báo lỗi
+description: Báo lỗi hoặc hành vi không mong muốn / Report a bug
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cảm ơn bạn đã báo lỗi! Vui lòng đính kèm **gói log chẩn đoán**
+        (nút "Gom log chẩn đoán" trong app). Please attach the diagnostics bundle.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Chuyện gì xảy ra? / What happened?
+      description: Mô tả lỗi và điều bạn mong đợi. Describe the bug and expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Các bước tái hiện / Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: tool-version
+    attributes:
+      label: Phiên bản tool / Tool version
+      description: Xem ở tiêu đề cửa sổ hoặc nút "Giới thiệu". See the title bar / About.
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Phiên bản Windows / Windows version
+      placeholder: "Windows 11 Pro 24H2 (x64)"
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Chế độ chạy / Run mode
+      options:
+        - Safe Mode (mặc định / default)
+        - --nosafemode
+        - --auto (silent)
+        - --select
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log / Diagnostics
+      description: Dán log liên quan hoặc đính kèm gói chẩn đoán. Paste logs or attach the bundle.
