@@ -51,6 +51,7 @@ namespace frmesetunins
         {
             { "app_title",        "Công cụ hỗ trợ gỡ ESET" },
             { "status_normal",    "Hệ thống đang ở chế độ bình thường." },
+            { "no_eset_normal",   "Không phát hiện ESET trên máy — không cần gỡ. Bạn vẫn có thể chạy thủ công nếu muốn." },
             { "countdown",        "Đếm ngược: {0} giây" },
             { "btn_restart",      "Khởi động lại vào Safe Mode" },
             { "btn_cancel",       "Hủy bỏ" },
@@ -112,6 +113,7 @@ namespace frmesetunins
         {
             { "app_title",        "ESET Uninstaller Support Tool" },
             { "status_normal",    "The system is in normal mode." },
+            { "no_eset_normal",   "No ESET detected on this PC — nothing to remove. You can still run it manually." },
             { "countdown",        "Countdown: {0}s" },
             { "btn_restart",      "Restart to Safe Mode" },
             { "btn_cancel",       "Cancel" },

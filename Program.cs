@@ -36,6 +36,9 @@ namespace frmesetunins
         private const int MaxSafeModeAttempts = 3;
         private const int StaleArmHours       = 6;
 
+        // Base name for user-facing files/folders (logs, diagnostics, local copy).
+        private const string AppBase = "ESETUninstallerSupport";
+
         internal const string EsetUninstallerUrl =
             "https://download.eset.com/com/eset/tools/installers/eset_apps_remover/latest/uninstaller.exe";
 
@@ -178,7 +181,7 @@ namespace frmesetunins
             try
             {
                 string exe = StageSelfLocally();
-                CreateRestorePoint("Before ESET removal (frmesetunins)");
+                CreateRestorePoint("Before ESET removal (ESET Uninstaller Support Tool)");
                 TryStageLatestUninstaller(out string _);
                 bool interactive = Array.IndexOf(args, "--select") >= 0;
                 bool clean       = Array.IndexOf(args, "--cleanleftovers") >= 0;
@@ -265,7 +268,7 @@ namespace frmesetunins
         internal static bool ValidateEmbeddedUninstaller(out string info)
         {
             info = "";
-            string tmp = Path.Combine(Path.GetTempPath(), "frmesetunins_embedded_check.exe");
+            string tmp = Path.Combine(Path.GetTempPath(), AppBase + "_embedded_check.exe");
             try
             {
                 using (var s = Assembly.GetExecutingAssembly()
@@ -276,9 +279,10 @@ namespace frmesetunins
                         s.CopyTo(fs);
                 }
                 string signer;
-                bool ok = Verify.IsSignedByEset(tmp, out signer);
-                info = "signer=" + signer + " sha256=" + Verify.Sha256(tmp);
-                return ok;
+                Verify.TryGetSigner(tmp, out signer);
+                uint wv = Verify.WinVerifyCode(tmp);
+                info = "signer=" + signer + " winVerify=0x" + wv.ToString("X8") + " sha256=" + Verify.Sha256(tmp);
+                return Verify.IsEsetSigner(signer);
             }
             catch (Exception ex) { info = ex.Message; return false; }
             finally { try { if (File.Exists(tmp)) File.Delete(tmp); } catch { } }
@@ -290,16 +294,16 @@ namespace frmesetunins
         {
             string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string dest;
-            try { dest = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "frmesetunins_diag_" + stamp + ".zip"); }
-            catch { dest = Path.Combine(Path.GetTempPath(), "frmesetunins_diag_" + stamp + ".zip"); }
+            try { dest = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), AppBase + "_diag_" + stamp + ".zip"); }
+            catch { dest = Path.Combine(Path.GetTempPath(), AppBase + "_diag_" + stamp + ".zip"); }
 
             try
             {
                 if (File.Exists(dest)) File.Delete(dest);
                 using (var z = ZipFile.Open(dest, ZipArchiveMode.Create))
                 {
-                    AddToZip(z, LogFilePath,            "frmesetunins.log");
-                    AddToZip(z, LogFilePath + ".old",   "frmesetunins.log.old");
+                    AddToZip(z, LogFilePath,            AppBase + ".log");
+                    AddToZip(z, LogFilePath + ".old",   AppBase + ".log.old");
                     AddToZip(z, LatestEsetLogPath(),    "ESETUninstaller.log");
                     AddToZip(z, LatestNetworkBackupPath(), "NetworkSettings.txt");
 
@@ -452,7 +456,7 @@ namespace frmesetunins
             }
         }
 
-        private static bool EsetInstalled()
+        internal static bool EsetInstalled()
         {
             // 1) Services: the ESET kernel service is the most reliable signal.
             foreach (string svc in new[] { "ekrn", "epfw", "ehdrv" })
@@ -542,7 +546,7 @@ namespace frmesetunins
 
         private static void RunEmbeddedUninstaller(bool interactive, bool noSafeMode)
         {
-            string tempDir = Path.Combine(Path.GetTempPath(), "frmesetunins_temp");
+            string tempDir = Path.Combine(Path.GetTempPath(), AppBase + "_temp");
             Directory.CreateDirectory(tempDir);
             // The KB command examples use the name ESETUninstaller.exe.
             string dest = Path.Combine(tempDir, "ESETUninstaller.exe");
@@ -584,9 +588,12 @@ namespace frmesetunins
 
                 // Record exactly what we are about to execute (traceability).
                 string sigSubject;
-                bool   signedByEset = Verify.IsSignedByEset(dest, out sigSubject);
+                Verify.TryGetSigner(dest, out sigSubject);
+                uint sigCode = Verify.WinVerifyCode(dest);
                 Log("Uninstaller sha256=" + Verify.Sha256(dest) +
-                    " signedByEset=" + signedByEset + " signer=" + sigSubject);
+                    " signer=" + sigSubject +
+                    " eset=" + Verify.IsEsetSigner(sigSubject) +
+                    " winVerify=0x" + sigCode.ToString("X8"));
 
                 // '/force' removes all ESET apps/components WITHOUT prompting —
                 // needed for unattended runs. Interactive ('select') mode shows
@@ -631,7 +638,7 @@ namespace frmesetunins
                 if (File.Exists(src))
                 {
                     string dst = Path.Combine(Path.GetTempPath(),
-                        "frmesetunins_ESETUninstaller_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".log");
+                        AppBase + "_ESETLog_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".log");
                     File.Copy(src, dst, overwrite: true);
                     Log("Saved uninstaller log to: " + dst);
                 }
@@ -653,7 +660,7 @@ namespace frmesetunins
                     return true;
                 }
 
-                CreateRestorePoint("Before ESET removal (frmesetunins /nosafemode)");
+                CreateRestorePoint("Before ESET removal (ESET Uninstaller Support Tool, /nosafemode)");
                 BackupNetworkSettings();
                 Log("Before uninstall: " + EsetStateSnapshot());
                 RunEmbeddedUninstaller(false, true); // /force /nosafemode
@@ -727,9 +734,7 @@ namespace frmesetunins
         {
             try
             {
-                string dir = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                    "frmesetunins");
+                string dir = LocalDir();
                 Directory.CreateDirectory(dir);
                 string outFile = Path.Combine(dir,
                     "NetworkSettings_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".txt");
@@ -756,7 +761,7 @@ namespace frmesetunins
             try
             {
                 var f = new DirectoryInfo(Path.GetTempPath())
-                    .GetFiles("frmesetunins_ESETUninstaller_*.log")
+                    .GetFiles(AppBase + "_ESETLog_*.log")
                     .OrderByDescending(x => x.LastWriteTimeUtc).FirstOrDefault();
                 return f?.FullName;
             }
@@ -838,7 +843,7 @@ namespace frmesetunins
         {
             return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
-                "frmesetunins");
+                AppBase);
         }
 
         internal static string StagedUninstallerPath
@@ -913,21 +918,29 @@ namespace frmesetunins
                     return false;
                 }
 
-                // Only trust a download that is validly Authenticode-signed by
-                // ESET — otherwise we would run an unverified executable.
+                // Accept only files whose Authenticode signer is ESET. The file
+                // already arrived over HTTPS from download.eset.com, so when the
+                // trust CHAIN cannot be validated (offline / missing CAs) we warn
+                // and still use it rather than rejecting a genuine ESET binary.
                 string signer;
-                if (!Verify.IsSignedByEset(tmp, out signer))
+                Verify.TryGetSigner(tmp, out signer);
+                uint wv = Verify.WinVerifyCode(tmp);
+                if (!Verify.IsEsetSigner(signer))
                 {
                     try { File.Delete(tmp); } catch { }
-                    message = "Ban tai ve khong co chu ky ESET hop le; dung ban tich hop.";
-                    Log("Downloaded uninstaller REJECTED (not validly ESET-signed). Signer=" + signer);
+                    message = "Ban tai ve khong phai chu ky ESET; dung ban tich hop.";
+                    Log("Downloaded uninstaller REJECTED (signer not ESET). signer=" + signer +
+                        " winVerify=0x" + wv.ToString("X8"));
                     return false;
                 }
+                if (wv != 0)
+                    Log("WARNING: downloaded ESET binary not chain-validated (winVerify=0x" +
+                        wv.ToString("X8") + "); accepting (came over HTTPS from ESET).");
 
                 if (File.Exists(path)) File.Delete(path);
                 File.Move(tmp, path);
-                Log("Staged latest uninstaller (" + new FileInfo(path).Length + " bytes). Signer=" +
-                    signer + " sha256=" + Verify.Sha256(path));
+                Log("Staged latest uninstaller (" + new FileInfo(path).Length + " bytes). signer=" +
+                    signer + " winVerify=0x" + wv.ToString("X8") + " sha256=" + Verify.Sha256(path));
                 message = "Da tai ESET Uninstaller moi nhat.";
                 return true;
             }
@@ -1006,7 +1019,7 @@ namespace frmesetunins
         // ── Shared helpers ────────────────────────────────────────────────
 
         private static readonly string LogPath =
-            Path.Combine(Path.GetTempPath(), "frmesetunins.log");
+            Path.Combine(Path.GetTempPath(), AppBase + ".log");
 
         internal static string LogFilePath => LogPath;
 

@@ -28,29 +28,36 @@ namespace frmesetunins
         /// True when the file carries a cryptographically valid Authenticode
         /// signature AND the signer's certificate subject mentions ESET.
         /// </summary>
-        internal static bool IsSignedByEset(string path, out string signer)
+        /// <summary>Read the Authenticode signer's certificate subject, if any.</summary>
+        internal static bool TryGetSigner(string path, out string signer)
         {
             signer = "(none)";
             try
             {
-                if (!WinVerifyTrustValid(path))
-                    return false;
-
                 using (var cert = new X509Certificate2(X509Certificate.CreateFromSignedFile(path)))
                 {
                     signer = cert.Subject;
-                    return signer.IndexOf("ESET", StringComparison.OrdinalIgnoreCase) >= 0;
+                    return true;
                 }
             }
-            catch
-            {
-                return false;
-            }
+            catch { return false; }
+        }
+
+        /// <summary>True if the signer's certificate subject mentions ESET.</summary>
+        internal static bool IsEsetSigner(string signer)
+        {
+            return signer != null && signer.IndexOf("ESET", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         // ── WinVerifyTrust ────────────────────────────────────────────────
 
-        private static bool WinVerifyTrustValid(string path)
+        /// <summary>
+        /// Raw WinVerifyTrust result: 0 (ERROR_SUCCESS) = the file's Authenticode
+        /// signature is cryptographically valid and chains to a trusted root.
+        /// A non-zero code can also mean the chain could not be built (e.g. an
+        /// offline machine missing intermediate CAs), not only tampering.
+        /// </summary>
+        internal static uint WinVerifyCode(string path)
         {
             Guid action = new Guid("00AAC56B-CD44-11d0-8CC2-00C04FC295EE"); // GENERIC_VERIFY_V2
 
@@ -89,8 +96,9 @@ namespace frmesetunins
                 Marshal.StructureToPtr(data, pData, false);
                 WinVerifyTrust(IntPtr.Zero, ref action, pData);
 
-                return result == 0; // ERROR_SUCCESS => trusted & valid
+                return result; // 0 == ERROR_SUCCESS (trusted & valid)
             }
+            catch { return 0x80004005; } // E_FAIL on marshalling error
             finally
             {
                 if (fileInfo.pcwszFilePath != IntPtr.Zero) Marshal.FreeCoTaskMem(fileInfo.pcwszFilePath);

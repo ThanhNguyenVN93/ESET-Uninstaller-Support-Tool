@@ -101,13 +101,13 @@ Một **mutex** (`Global\frmesetunins_safemode`) đảm bảo chỉ một instan
 ESET Uninstaller **mặc định tương tác** (hỏi gõ `y`, chọn số…). App chạy nó với cờ **`/force`** để gỡ toàn bộ ESET **không cần nhập liệu**, kèm:
 
 - **Timeout 5 phút** — nếu uninstaller treo sẽ bị `Kill()`, tránh kẹt Safe Mode vĩnh viễn.
-- **Ghi log**: trạng thái app → `%TEMP%\frmesetunins.log`; log của ESET (`~ESETUninstaller.log`) được sao chép ra `%TEMP%\frmesetunins_ESETUninstaller_*.log`.
+- **Ghi log**: trạng thái app → `%TEMP%\ESETUninstallerSupport.log` (tự xoay khi >1MB); log của ESET (`~ESETUninstaller.log`) được sao chép ra `%TEMP%\ESETUninstallerSupport_ESETLog_*.log`.
 - **Không có hộp thoại chặn** trong Safe Mode (vì unattended không có người bấm); luôn dọn dẹp + restart kể cả khi lỗi.
 - Sau khi gỡ, app **kiểm tra lại** ESET còn không và ghi kết quả vào log.
 
 ### Các tính năng khác
 
-- **Tải uninstaller mới nhất**: ở chế độ bình thường (còn mạng), app tải bản `latest` từ ESET về `%ProgramData%\frmesetunins\uninstaller.exe` và kiểm tra hợp lệ (PE/MZ, >50KB). Safe Mode minimal không có mạng nên dùng bản này; nếu không tải được thì fallback bản tích hợp.
+- **Tải uninstaller mới nhất**: ở chế độ bình thường (còn mạng), app tải bản `latest` từ ESET về `%ProgramData%\ESETUninstallerSupport\uninstaller.exe` và kiểm tra hợp lệ (PE/MZ, >50KB, chữ ký ESET). Safe Mode minimal không có mạng nên dùng bản này; nếu không tải được thì fallback bản tích hợp.
 - **Phát hiện ESET** qua 3 lớp: service (`ekrn`/`epfw`/`ehdrv`) → registry Uninstall (cả 64-bit & 32-bit) → thư mục.
 - **AutoLogonCount=1**: lớp bảo hiểm để Windows tự tắt autologon sau đúng 1 lần đăng nhập.
 - **Màn hình kết quả**: lần boot bình thường kế tiếp, app tự chạy (RunOnce `--result`) hiển thị thành công / cảnh báo / lỗi + nút mở log.
@@ -117,10 +117,10 @@ ESET Uninstaller **mặc định tương tác** (hỏi gõ `y`, chọn số…).
 - **Nút "Báo lỗi / Góp ý"** mở trang Issues của repo trên GitHub.
 - **Nút "Hủy khởi động lại"**: sau khi đã lên lịch, còn ~20 giây để hủy (`shutdown /a`) và hoàn tác toàn bộ thay đổi.
 - **Chế độ silent/CLI**: `ESET Uninstaller Support Tool.exe --auto` (không UI, tự lên lịch); kèm `--password=<mk>` để bật autologon không giám sát. Mã thoát: 0 = gỡ thành công, 1 = vẫn còn ESET, 2 = lỗi, 3 = không có ESET.
-- **Sao lưu cấu hình mạng** (`netsh -c interface dump`) trước khi gỡ, lưu tại `%ProgramData%\frmesetunins\`; khôi phục bằng `netsh -f <file>`.
+- **Sao lưu cấu hình mạng** (`netsh -c interface dump`) trước khi gỡ, lưu tại `%ProgramData%\ESETUninstallerSupport\`; khôi phục bằng `netsh -f <file>` (có nút "Khôi phục mạng").
 - **Nhắc export thiết lập ESET** trước khi gỡ (không tự khôi phục khi cài lại).
 - **Kiểm tra uninstaller** (PE/MZ, ≥50KB) trước khi chạy, và **xác minh đã xóa** mật khẩu LSA sau khi tắt autologon.
-- **Tự copy về đĩa cục bộ** (`%ProgramData%\frmesetunins\ESETUninstallerSupport.exe`) và trỏ trigger vào bản này → **chạy được từ network share / USB** (Safe Mode minimal không có mạng). Đây là copy trên **cùng máy**, không phải lan mạng.
+- **Tự copy về đĩa cục bộ** (`%ProgramData%\ESETUninstallerSupport\ESETUninstallerSupport.exe`) và trỏ trigger vào bản này → **chạy được từ network share / USB** (Safe Mode minimal không có mạng). Đây là copy trên **cùng máy**, không phải lan mạng.
 - **Chế độ `--select`** (hoặc tick ô trên UI): chạy ESET Uninstaller ở **menu tương tác** để chọn sản phẩm cần gỡ, thay vì `/force` gỡ tất cả.
 - **Tự thử lại 2 lần** trong Safe Mode nếu `/force` chưa gỡ sạch (KB nói đôi khi cần chạy 2 lần).
 - **Recovery guard**: nếu lần arm trước không vào được Safe Mode (hủy/treo), lần boot bình thường kế tiếp tự dọn cờ safeboot + autologon còn sót.

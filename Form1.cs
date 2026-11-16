@@ -28,6 +28,7 @@ namespace frmesetunins
 
         private enum Phase { Idle, Aborting, Done }
         private Phase phase = Phase.Idle;
+        private bool  noEset;
 
         public Form1()
         {
@@ -166,9 +167,15 @@ namespace frmesetunins
             vt.IsBackground = true;
             vt.Start();
 
+            // If ESET isn't installed, don't auto-count down into a pointless
+            // Safe Mode trip — tell the user and let them act manually.
+            noEset = !Program.EsetInstalled();
+            ApplyLanguage();
+
             countdownTimer = new Timer { Interval = 1000 };
             countdownTimer.Tick += CountdownTimer_Tick;
-            countdownTimer.Start();
+            if (!noEset) countdownTimer.Start();
+            else lblCountdown.Visible = false;
         }
 
         private void ApplyLanguage()
@@ -195,8 +202,16 @@ namespace frmesetunins
 
             if (phase == Phase.Idle)
             {
-                lblStatus.Text    = Loc.T("status_normal");
-                lblCountdown.Text = string.Format(Loc.T("countdown"), countdownSeconds);
+                if (noEset)
+                {
+                    lblStatus.Text      = Loc.T("no_eset_normal");
+                    lblStatus.ForeColor = Color.FromArgb(0, 150, 60);
+                }
+                else
+                {
+                    lblStatus.Text    = Loc.T("status_normal");
+                    lblCountdown.Text = string.Format(Loc.T("countdown"), countdownSeconds);
+                }
             }
             else if (phase == Phase.Aborting)
             {
@@ -269,7 +284,7 @@ namespace frmesetunins
                 string exe = Program.StageSelfLocally();
 
                 // Safety net before anything destructive (needs System Protection).
-                Program.CreateRestorePoint("Before ESET removal (frmesetunins)");
+                Program.CreateRestorePoint("Before ESET removal (ESET Uninstaller Support Tool)");
 
                 lblStatus.Text = Loc.T("status_downloading");
                 Application.DoEvents();
