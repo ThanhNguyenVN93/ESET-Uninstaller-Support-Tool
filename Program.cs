@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
@@ -23,10 +24,14 @@ namespace frmesetunins
 
         private const string SafeModeMutex  = @"Global\frmesetunins_safemode";
 
-        private const string ResultRunOnce   = "FrmEseUninsResult";
-        private const string LastResultVal   = "LastResult";
+        private const string ResultRunOnce    = "FrmEseUninsResult";
+        private const string LastResultVal    = "LastResult";
         private const string UninstallModeVal = "UninstallMode";
-        private const string ArmedVal        = "Armed";
+        private const string CleanLeftoversVal = "CleanLeftovers";
+        private const string ArmedVal         = "Armed";
+        private const string AttemptsVal      = "Attempts";
+
+        private const int MaxSafeModeAttempts = 3;
 
         internal const string EsetUninstallerUrl =
             "https://download.eset.com/com/eset/tools/installers/eset_apps_remover/latest/uninstaller.exe";
@@ -81,6 +86,19 @@ namespace frmesetunins
                 return;
             }
 
+            // Fallback mode: run the uninstaller right now in normal mode with
+            // /nosafemode (user must disable ESET self-defense first). Used when
+            // Safe Mode is impossible. No reboot.
+            if (args != null && Array.IndexOf(args, "--nosafemode") >= 0)
+            {
+                bool clean = Array.IndexOf(args, "--cleanleftovers") >= 0;
+                bool ok    = RunNormalModeUninstall(clean);
+                Environment.ExitCode = ok ? 0 : (EsetInstalled() ? 1 : 2);
+                if (Array.IndexOf(args, "--auto") < 0)
+                    Application.Run(new ResultForm());
+                return;
+            }
+
             // Silent/CLI mode for mass deployment: arm the triggers and reboot
             // with no UI. Optional --password=VALUE enables unattended autologon.
             if (args != null && Array.IndexOf(args, "--auto") >= 0)
@@ -101,7 +119,8 @@ namespace frmesetunins
                 string exe = StageSelfLocally();
                 TryStageLatestUninstaller(out string _);
                 bool interactive = Array.IndexOf(args, "--select") >= 0;
-                ArmSafeMode(exe, interactive);
+                bool clean       = Array.IndexOf(args, "--cleanleftovers") >= 0;
+                ArmSafeMode(exe, interactive, clean);
 
                 string pwd = GetArgValue(args, "--password=");
                 if (pwd != null)
@@ -130,9 +149,10 @@ namespace frmesetunins
         }
 
         // Arms every Safe Mode relaunch trigger (does NOT schedule the restart).
-        // interactive=true runs the ESET uninstaller in '--select' (menu) mode
-        // instead of '/force'.
-        internal static void ArmSafeMode(string exe, bool interactive)
+        // interactive=true runs the ESET uninstaller in menu mode instead of
+        // '/force'; cleanLeftovers=true removes leftover ESET files/services if
+        // the uninstaller leaves some behind.
+        internal static void ArmSafeMode(string exe, bool interactive, bool cleanLeftovers)
         {
             using (var key = Registry.LocalMachine.OpenSubKey(RunOnceKey, writable: true))
                 key?.SetValue(RunOnceName, "\"" + exe + "\"");
@@ -140,6 +160,7 @@ namespace frmesetunins
             EnableAlternateShellFallback(exe);
 
             SetState(UninstallModeVal, interactive ? "select" : "force");
+            SetState(CleanLeftoversVal, cleanLeftovers ? "1" : "0");
             SetState(ArmedVal, "1");
 
             RunSysCmd("bcdedit.exe", "/set {current} safeboot minimal");
@@ -183,7 +204,19 @@ namespace frmesetunins
                 Log("=== Safe Mode run started ===");
                 ClearState(ArmedVal); // we reached Safe Mode; no leftover to clean
 
-                bool interactive = GetState(UninstallModeVal) == "select";
+                // Loop-guard: never bounce the machine through Safe Mode forever.
+                int attempt = ParseInt(GetState(AttemptsVal)) + 1;
+                SetState(AttemptsVal, attempt.ToString());
+                if (attempt > MaxSafeModeAttempts)
+                {
+                    Log("ABORT: exceeded " + MaxSafeModeAttempts + " Safe Mode attempts.");
+                    SetLastResult("error:Da thu qua " + MaxSafeModeAttempts + " lan trong Safe Mode.");
+                    Environment.ExitCode = 2;
+                    return;
+                }
+
+                bool interactive    = GetState(UninstallModeVal)  == "select";
+                bool cleanLeftovers = GetState(CleanLeftoversVal) == "1";
 
                 if (EsetInstalled())
                 {
@@ -197,7 +230,13 @@ namespace frmesetunins
                     for (int pass = 1; pass <= maxPasses && EsetInstalled(); pass++)
                     {
                         Log("Uninstall pass " + pass + " (" + (interactive ? "select" : "force") + ").");
-                        RunEmbeddedUninstaller(interactive);
+                        RunEmbeddedUninstaller(interactive, false);
+                    }
+
+                    if (EsetInstalled() && cleanLeftovers)
+                    {
+                        Log("ESET still present; cleaning leftovers (opt-in).");
+                        CleanEsetLeftovers();
                     }
 
                     Log("After uninstall: " + EsetStateSnapshot());
@@ -213,6 +252,7 @@ namespace frmesetunins
                         Log("ESET removed successfully.");
                         SetLastResult("success");
                         Environment.ExitCode = 0;
+                        ClearState(AttemptsVal);
                     }
                 }
                 else
@@ -220,6 +260,7 @@ namespace frmesetunins
                     Log("No ESET detected; nothing to remove.");
                     SetLastResult("none");
                     Environment.ExitCode = 3;
+                    ClearState(AttemptsVal);
                 }
             }
             catch (Exception ex)
@@ -323,7 +364,7 @@ namespace frmesetunins
         // Interactive menu needs a human: allow much longer before giving up.
         private const int UninstallInteractiveTimeoutMs = 30 * 60 * 1000;
 
-        private static void RunEmbeddedUninstaller(bool interactive)
+        private static void RunEmbeddedUninstaller(bool interactive, bool noSafeMode)
         {
             string tempDir = Path.Combine(Path.GetTempPath(), "frmesetunins_temp");
             Directory.CreateDirectory(tempDir);
@@ -364,7 +405,10 @@ namespace frmesetunins
                 // '/force' removes all ESET apps/components WITHOUT prompting —
                 // needed for unattended runs. Interactive ('select') mode shows
                 // the tool's own menu so the user picks which product to remove.
+                // '/nosafemode' lets the tool run in normal mode (self-defense
+                // must be disabled first).
                 string arguments = interactive ? "" : "/force";
+                if (noSafeMode) arguments = (arguments + " /nosafemode").Trim();
                 int    timeout   = interactive ? UninstallInteractiveTimeoutMs : UninstallTimeoutMs;
 
                 using (var proc = Process.Start(new ProcessStartInfo(dest)
@@ -407,6 +451,70 @@ namespace frmesetunins
                 }
             }
             catch { }
+        }
+
+        // Fallback path: uninstall right now in normal mode (/nosafemode). The
+        // user must disable ESET self-defense first or it will be blocked.
+        internal static bool RunNormalModeUninstall(bool cleanLeftovers)
+        {
+            try
+            {
+                Log("=== Normal-mode (/nosafemode) run started ===");
+                if (!EsetInstalled())
+                {
+                    Log("No ESET detected.");
+                    SetLastResult("none");
+                    return true;
+                }
+
+                BackupNetworkSettings();
+                Log("Before uninstall: " + EsetStateSnapshot());
+                RunEmbeddedUninstaller(false, true); // /force /nosafemode
+
+                if (EsetInstalled() && cleanLeftovers)
+                {
+                    Log("ESET still present; cleaning leftovers (opt-in).");
+                    CleanEsetLeftovers();
+                }
+
+                Log("After uninstall: " + EsetStateSnapshot());
+
+                bool removed = !EsetInstalled();
+                SetLastResult(removed ? "success" : "warning");
+                return removed;
+            }
+            catch (Exception ex)
+            {
+                Log("ERROR during normal-mode uninstall: " + ex);
+                SetLastResult("error:" + ex.Message);
+                return false;
+            }
+        }
+
+        // Opt-in removal of known ESET leftovers (services + folders) when the
+        // official uninstaller leaves some behind. Every action is logged.
+        private static void CleanEsetLeftovers()
+        {
+            foreach (string svc in new[] { "ekrn", "epfw", "ehdrv", "edevmon", "eelam", "epfwwfp" })
+            {
+                try { RunSysCmd("sc.exe", "stop " + svc); }   catch { }
+                try { RunSysCmd("sc.exe", "delete " + svc); Log("Deleted service: " + svc); } catch { }
+            }
+
+            string pf   = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string pf86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            string cd   = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            foreach (string p in new[]
+            {
+                Path.Combine(pf, "ESET"), Path.Combine(pf86, "ESET"), Path.Combine(cd, "ESET"),
+            })
+            {
+                try
+                {
+                    if (Directory.Exists(p)) { Directory.Delete(p, recursive: true); Log("Deleted leftover folder: " + p); }
+                }
+                catch (Exception ex) { Log("Could not delete " + p + ": " + ex.Message); }
+            }
         }
 
         private static void RemoveSafeBootAndRestart()
@@ -454,6 +562,45 @@ namespace frmesetunins
                 Log("Backed up network settings to: " + outFile);
             }
             catch (Exception ex) { Log("Network backup failed: " + ex.Message); }
+        }
+
+        internal static string LatestEsetLogPath()
+        {
+            try
+            {
+                var f = new DirectoryInfo(Path.GetTempPath())
+                    .GetFiles("frmesetunins_ESETUninstaller_*.log")
+                    .OrderByDescending(x => x.LastWriteTimeUtc).FirstOrDefault();
+                return f?.FullName;
+            }
+            catch { return null; }
+        }
+
+        internal static string LatestNetworkBackupPath()
+        {
+            try
+            {
+                if (!Directory.Exists(LocalDir())) return null;
+                var f = new DirectoryInfo(LocalDir())
+                    .GetFiles("NetworkSettings_*.txt")
+                    .OrderByDescending(x => x.LastWriteTimeUtc).FirstOrDefault();
+                return f?.FullName;
+            }
+            catch { return null; }
+        }
+
+        internal static bool RestoreNetwork()
+        {
+            string f = LatestNetworkBackupPath();
+            if (f == null) return false;
+            try { RunSysCmd("netsh.exe", "-f \"" + f + "\""); Log("Restored network from: " + f); return true; }
+            catch (Exception ex) { Log("Network restore failed: " + ex.Message); return false; }
+        }
+
+        private static int ParseInt(string s)
+        {
+            int n;
+            return int.TryParse(s, out n) ? n : 0;
         }
 
         // ── AlternateShell fallback ───────────────────────────────────────

@@ -11,12 +11,18 @@ Ba cách triển khai đã được kiểm chứng, dùng chế độ CLI `--aut
 ## Tham số dòng lệnh / CLI flags
 
 ```
-ESET Uninstaller Support Tool.exe [--auto] [--select] [--password=<pwd>]
+ESET Uninstaller Support Tool.exe [--auto] [--select] [--password=<pwd>] [--cleanleftovers]
+                                  [--nosafemode [--cleanleftovers] [--auto]]
 ```
 
 - `--auto` — không UI, tự lên lịch vào Safe Mode. No UI; arm + reboot automatically.
 - `--select` — chạy ESET Uninstaller ở menu tương tác (chọn sản phẩm). Interactive product menu.
 - `--password=<pwd>` — bật autologon không giám sát (mật khẩu Windows của máy). Enables unattended autologon.
+- `--cleanleftovers` — nếu còn sót, xóa service + thư mục ESET (rủi ro, mặc định tắt). Remove leftover ESET services/folders (risky, off by default).
+- `--nosafemode` — gỡ NGAY trong Windows bình thường, không reboot (phải tắt Self-Defense trước). Uninstall in normal mode now, no reboot (disable Self-Defense first). Kèm `--auto` để không hiện màn kết quả.
+
+> 🔑 Safe Mode gỡ được ESET **kể cả khi settings bị khóa mật khẩu**. Safe Mode removes ESET **even if settings are password-protected**.
+> 🏢 Với endpoint **được quản lý**, hãy dùng **ESET PROTECT** push-uninstall (KB7724). For **managed** endpoints, prefer ESET PROTECT.
 
 ## Mã thoát / Exit codes
 

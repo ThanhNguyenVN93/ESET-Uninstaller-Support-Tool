@@ -17,7 +17,7 @@ namespace frmesetunins
 
             this.AutoScaleMode       = System.Windows.Forms.AutoScaleMode.Font;
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
-            this.ClientSize          = new System.Drawing.Size(520, 250);
+            this.ClientSize          = new System.Drawing.Size(560, 340);
             this.Name                = "Form1";
             this.Text                = "ESET Uninstaller Support Tool";
             this.StartPosition       = System.Windows.Forms.FormStartPosition.CenterScreen;

@@ -6,15 +6,17 @@ namespace frmesetunins
 {
     public partial class Form1 : Form
     {
-        private Label  lblReminder;
-        private Label  lblStatus;
-        private Label  lblCountdown;
-        private Button btnAction;
-        private Button btnCancel;
-        private Button btnLang;
+        private Label    lblReminder;
+        private Label    lblStatus;
+        private Label    lblCountdown;
+        private Button   btnAction;
+        private Button   btnNoSafeMode;
+        private Button   btnCancel;
+        private Button   btnLang;
         private Button   btnReport;
         private Button   btnAbort;
         private CheckBox chkSelect;
+        private CheckBox chkClean;
 
         private Timer  countdownTimer;
         private Timer  abortTimer;
@@ -33,22 +35,22 @@ namespace frmesetunins
         {
             base.OnLoad(e);
 
-            lblReminder = MakeLabel(new Point(12, 40), new Size(496, 34), 8.5f, FontStyle.Italic,
-                Color.FromArgb(120, 120, 120), "");
+            lblReminder = MakeLabel(new Point(16, 42), new Size(528, 52), 8.5f, FontStyle.Italic,
+                Color.FromArgb(110, 110, 110), "");
             Controls.Add(lblReminder);
 
-            lblStatus = MakeLabel(new Point(0, 78), new Size(520, 34), 11, FontStyle.Regular,
+            lblStatus = MakeLabel(new Point(0, 100), new Size(560, 30), 11, FontStyle.Regular,
                 Color.FromArgb(0, 120, 215), "");
             Controls.Add(lblStatus);
 
-            lblCountdown = MakeLabel(new Point(0, 114), new Size(520, 28), 10, FontStyle.Bold,
+            lblCountdown = MakeLabel(new Point(0, 132), new Size(560, 26), 10, FontStyle.Bold,
                 Color.FromArgb(200, 0, 0), "");
             Controls.Add(lblCountdown);
 
             btnAction = new Button
             {
-                Location  = new Point(96, 150),
-                Size      = new Size(210, 38),
+                Location  = new Point(120, 162),
+                Size      = new Size(320, 40),
                 Font      = new Font("Segoe UI", 10, FontStyle.Bold),
                 BackColor = Color.FromArgb(0, 120, 215),
                 ForeColor = Color.White,
@@ -59,21 +61,29 @@ namespace frmesetunins
             btnAction.Click += (s, ev) => RestartToSafeMode();
             Controls.Add(btnAction);
 
-            btnCancel = new Button
+            btnNoSafeMode = new Button
             {
-                Location  = new Point(316, 150),
-                Size      = new Size(100, 38),
-                Font      = new Font("Segoe UI", 10, FontStyle.Regular),
+                Location  = new Point(120, 208),
+                Size      = new Size(320, 32),
+                Font      = new Font("Segoe UI", 9, FontStyle.Regular),
                 FlatStyle = FlatStyle.Flat,
                 Cursor    = Cursors.Hand,
             };
-            btnCancel.Click += (s, ev) => CancelAndExit();
-            Controls.Add(btnCancel);
+            btnNoSafeMode.Click += (s, ev) => RunNoSafeMode();
+            Controls.Add(btnNoSafeMode);
+
+            chkSelect = new CheckBox { Location = new Point(16, 248), AutoSize = true,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular) };
+            Controls.Add(chkSelect);
+
+            chkClean = new CheckBox { Location = new Point(16, 270), AutoSize = true,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular) };
+            Controls.Add(chkClean);
 
             btnAbort = new Button
             {
-                Location  = new Point(150, 150),
-                Size      = new Size(220, 38),
+                Location  = new Point(120, 162),
+                Size      = new Size(320, 40),
                 Font      = new Font("Segoe UI", 10, FontStyle.Bold),
                 BackColor = Color.FromArgb(200, 0, 0),
                 ForeColor = Color.White,
@@ -85,18 +95,10 @@ namespace frmesetunins
             btnAbort.Click += (s, ev) => AbortRestart();
             Controls.Add(btnAbort);
 
-            chkSelect = new CheckBox
-            {
-                Location = new Point(14, 196),
-                AutoSize = true,
-                Font     = new Font("Segoe UI", 8.5f, FontStyle.Regular),
-            };
-            Controls.Add(chkSelect);
-
             btnReport = new Button
             {
-                Location  = new Point(12, 216),
-                Size      = new Size(200, 28),
+                Location  = new Point(16, 300),
+                Size      = new Size(200, 30),
                 Font      = new Font("Segoe UI", 9, FontStyle.Regular),
                 FlatStyle = FlatStyle.Flat,
                 Cursor    = Cursors.Hand,
@@ -104,9 +106,20 @@ namespace frmesetunins
             btnReport.Click += (s, ev) => Program.OpenIssues();
             Controls.Add(btnReport);
 
+            btnCancel = new Button
+            {
+                Location  = new Point(424, 300),
+                Size      = new Size(120, 30),
+                Font      = new Font("Segoe UI", 9, FontStyle.Regular),
+                FlatStyle = FlatStyle.Flat,
+                Cursor    = Cursors.Hand,
+            };
+            btnCancel.Click += (s, ev) => CancelAndExit();
+            Controls.Add(btnCancel);
+
             btnLang = new Button
             {
-                Location  = new Point(426, 10),
+                Location  = new Point(466, 10),
                 Size      = new Size(82, 26),
                 Font      = new Font("Segoe UI", 8.5f, FontStyle.Regular),
                 FlatStyle = FlatStyle.Flat,
@@ -122,17 +135,18 @@ namespace frmesetunins
             countdownTimer.Start();
         }
 
-        // Re-applies every visible string for the current language.
         private void ApplyLanguage()
         {
-            Text            = Loc.T("app_title");
-            btnAction.Text  = Loc.T("btn_restart");
-            btnCancel.Text  = Loc.T("btn_cancel");
-            btnLang.Text    = Loc.T("btn_lang");
-            btnReport.Text  = Loc.T("btn_report");
-            btnAbort.Text   = Loc.T("abort_btn");
-            chkSelect.Text  = Loc.T("chk_select");
-            lblReminder.Text = Loc.T("export_reminder");
+            Text              = Loc.T("app_title");
+            btnAction.Text    = Loc.T("btn_restart");
+            btnNoSafeMode.Text = Loc.T("btn_nosafemode");
+            btnCancel.Text    = Loc.T("btn_cancel");
+            btnLang.Text      = Loc.T("btn_lang");
+            btnReport.Text    = Loc.T("btn_report");
+            btnAbort.Text     = Loc.T("abort_btn");
+            chkSelect.Text    = Loc.T("chk_select");
+            chkClean.Text     = Loc.T("chk_clean");
+            lblReminder.Text  = Loc.T("export_reminder") + "\n" + Loc.T("info_password");
 
             if (phase == Phase.Idle)
             {
@@ -143,7 +157,7 @@ namespace frmesetunins
             {
                 lblStatus.Text = string.Format(Loc.T("abort_text"), abortSeconds);
             }
-            else // Done (aborted)
+            else
             {
                 lblStatus.Text = Loc.T("aborted");
             }
@@ -172,29 +186,42 @@ namespace frmesetunins
 
         private void CancelAndExit()
         {
-            // Nothing has been changed yet (triggers are only set once
-            // RestartToSafeMode runs), so cancelling just stops and closes.
             countdownTimer.Stop();
             Close();
         }
 
+        private void SetIdleControls(bool enabled)
+        {
+            btnAction.Enabled     = enabled;
+            btnNoSafeMode.Enabled = enabled;
+            btnCancel.Enabled     = enabled;
+            chkSelect.Enabled     = enabled;
+            chkClean.Enabled      = enabled;
+        }
+
         private void RestartToSafeMode()
         {
+            countdownTimer.Stop();
+
+            // Pre-flight checklist (Wi-Fi off in Safe Mode, back up data).
+            if (MessageBox.Show(Loc.T("preflight"), Loc.T("preflight_title"),
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Information) != DialogResult.Yes)
+            {
+                lblStatus.Text = Loc.T("status_normal");
+                lblCountdown.Visible = true;
+                SetIdleControls(true);
+                return;
+            }
+
             try
             {
-                countdownTimer.Stop();
                 lblCountdown.Visible = false;
-                btnAction.Enabled    = false;
-                btnCancel.Enabled    = false;
-                chkSelect.Enabled    = false;
+                SetIdleControls(false);
 
-                // Copy ourselves to local disk and point the triggers there, so
-                // the relaunch works even when run from a network share (Safe
-                // Mode minimal has no network access).
+                // Copy ourselves to local disk and point triggers there, so the
+                // relaunch works even from a network share (Safe Mode has no net).
                 string exe = Program.StageSelfLocally();
 
-                // Download the latest ESET Uninstaller now, while networking is
-                // available (Safe Mode minimal has none). Best-effort.
                 lblStatus.Text = Loc.T("status_downloading");
                 Application.DoEvents();
                 Program.TryStageLatestUninstaller(out string _);
@@ -202,10 +229,8 @@ namespace frmesetunins
                 lblStatus.Text = Loc.T("status_preparing");
                 Application.DoEvents();
 
-                // Arm both relaunch triggers + the Safe Mode boot flags.
-                Program.ArmSafeMode(exe, chkSelect.Checked);
+                Program.ArmSafeMode(exe, chkSelect.Checked, chkClean.Checked);
 
-                // Optional: enable autologon so the Safe Mode pass is unattended.
                 if (PasswordPrompt.TryGet(out string pwd))
                 {
                     try { AutoLogon.Enable(pwd); }
@@ -222,24 +247,54 @@ namespace frmesetunins
             {
                 lblStatus.Text       = Loc.T("err_prefix") + ex.Message;
                 lblCountdown.Visible = true;
-                btnAction.Enabled    = true;
-                btnCancel.Enabled    = true;
-                countdownTimer.Start();
+                SetIdleControls(true);
             }
         }
 
-        // After arming, give the user a window to abort before the restart fires.
+        // Fallback: run the uninstaller now in normal mode (/nosafemode).
+        private void RunNoSafeMode()
+        {
+            countdownTimer.Stop();
+            if (MessageBox.Show(Loc.T("nosafemode_confirm"), Loc.T("nosafemode_title"),
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+            {
+                lblCountdown.Visible = true;
+                return;
+            }
+
+            bool clean = chkClean.Checked;
+            lblCountdown.Visible = false;
+            SetIdleControls(false);
+            lblStatus.Text = Loc.T("working");
+
+            var t = new System.Threading.Thread(() =>
+            {
+                Program.RunNormalModeUninstall(clean);
+                try { BeginInvoke(new Action(ShowResultAndClose)); } catch { }
+            });
+            t.IsBackground = true;
+            t.Start();
+        }
+
+        private void ShowResultAndClose()
+        {
+            using (var rf = new ResultForm()) rf.ShowDialog(this);
+            Close();
+        }
+
         private void EnterAbortPhase()
         {
             phase = Phase.Aborting;
-            lblReminder.Visible  = false;
-            lblCountdown.Visible = false;
-            btnAction.Visible    = false;
-            btnCancel.Visible    = false;
-            chkSelect.Visible    = false;
-            btnAbort.Visible     = true;
-            lblStatus.ForeColor  = Color.FromArgb(200, 0, 0);
-            lblStatus.Text       = string.Format(Loc.T("abort_text"), abortSeconds);
+            lblReminder.Visible   = false;
+            lblCountdown.Visible  = false;
+            btnAction.Visible     = false;
+            btnNoSafeMode.Visible = false;
+            btnCancel.Visible     = false;
+            chkSelect.Visible     = false;
+            chkClean.Visible      = false;
+            btnAbort.Visible      = true;
+            lblStatus.ForeColor   = Color.FromArgb(200, 0, 0);
+            lblStatus.Text        = string.Format(Loc.T("abort_text"), abortSeconds);
 
             Program.RunSysCmd("shutdown.exe", "/r /t " + abortSeconds);
 
@@ -250,7 +305,7 @@ namespace frmesetunins
                 if (abortSeconds <= 0)
                 {
                     abortTimer.Stop();
-                    Close(); // let the scheduled restart proceed
+                    Close();
                     return;
                 }
                 lblStatus.Text = string.Format(Loc.T("abort_text"), abortSeconds);

@@ -125,6 +125,21 @@ ESET Uninstaller **mặc định tương tác** (hỏi gõ `y`, chọn số…).
 - **Tự thử lại 2 lần** trong Safe Mode nếu `/force` chưa gỡ sạch (KB nói đôi khi cần chạy 2 lần).
 - **Recovery guard**: nếu lần arm trước không vào được Safe Mode (hủy/treo), lần boot bình thường kế tiếp tự dọn cờ safeboot + autologon còn sót.
 
+## Chế độ & khái niệm quan trọng
+
+- **Gỡ được cả khi bị khóa mật khẩu**: chạy trong Safe Mode, self-defense của ESET không hoạt động nên uninstaller gỡ được **kể cả khi settings bị bảo vệ bằng mật khẩu** (hợp lệ cho trường hợp mất mật khẩu admin). Nguồn: forum ESET.
+- **`/nosafemode` (fallback)**: khi **không thể vào Safe Mode**, chạy `...exe --nosafemode` để gỡ ngay trong Windows bình thường. Bắt buộc **TẮT Self-Defense/HIPS** trong ESET trước (và nhập mật khẩu nếu được hỏi). Trên UI có nút "Thử gỡ ngay (không cần Safe Mode)".
+- **Loop-guard**: đếm số lần vào Safe Mode (`Attempts`); quá **3 lần** chưa xong thì **dừng hẳn** (báo lỗi, dọn dẹp) thay vì reboot vô tận. Thực tế người dùng từng bị kẹt vòng lặp Safe Mode (msconfig không lưu được) — tool này tránh bằng `bcdedit` + guard.
+- **Dọn leftover (tùy chọn)**: `--cleanleftovers` hoặc tick ô tương ứng → nếu uninstaller để sót, xóa service (`ekrn`/`epfw`/`ehdrv`...) + thư mục ESET. Mặc định **TẮT** vì có rủi ro; mọi thao tác đều ghi log.
+- **Pre-flight**: trước khi vào Safe Mode, nhắc **Wi-Fi có thể không chạy** (chuẩn bị mạng dây/truy cập từ xa) và **sao lưu dữ liệu**.
+
+## So sánh với cách chính thức
+
+| Tình huống | Nên dùng |
+|---|---|
+| Endpoint **được quản lý** bởi ESET PROTECT | **ESET PROTECT** push-uninstall (KB7724, hỗ trợ `PASSWORD=`) |
+| Máy **không quản lý** / mất mật khẩu / server quản lý đã chết / uninstall thường thất bại | **Công cụ này** (Safe Mode uninstaller) |
+
 ## Triển khai qua Network Share
 
 Đặt `ESET Uninstaller Support Tool.exe` lên thư mục chia sẻ; người dùng/IT chạy trực tiếp. App tự copy về cục bộ nên relaunch trong Safe Mode vẫn hoạt động. Cho deploy hàng loạt: `...exe --auto [--select] [--password=<mk>]` (xem mã thoát ở trên).

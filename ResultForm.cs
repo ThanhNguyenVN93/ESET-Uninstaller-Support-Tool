@@ -50,13 +50,13 @@ namespace frmesetunins
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MinimizeBox     = false;
             MaximizeBox     = false;
-            ClientSize      = new Size(520, 330);
+            ClientSize      = new Size(540, 380);
 
             var lblHead = new Label
             {
                 AutoSize  = false,
                 Location  = new Point(16, 16),
-                Size      = new Size(488, 60),
+                Size      = new Size(508, 60),
                 Font      = new Font("Segoe UI", 12, FontStyle.Bold),
                 ForeColor = color,
                 Text      = headline,
@@ -66,7 +66,7 @@ namespace frmesetunins
             var txtLog = new TextBox
             {
                 Location   = new Point(16, 86),
-                Size       = new Size(488, 180),
+                Size       = new Size(508, 180),
                 Multiline  = true,
                 ReadOnly   = true,
                 ScrollBars = ScrollBars.Vertical,
@@ -75,10 +75,11 @@ namespace frmesetunins
             };
             Controls.Add(txtLog);
 
+            // Row 1: open logs + restore network.
             var btnOpen = new Button
             {
                 Text     = Loc.T("result_openlog"),
-                Location = new Point(16, 284),
+                Location = new Point(16, 278),
                 Size     = new Size(150, 32),
             };
             btnOpen.Click += (s, e) =>
@@ -87,11 +88,41 @@ namespace frmesetunins
             };
             Controls.Add(btnOpen);
 
+            string esetLog = Program.LatestEsetLogPath();
+            var btnEsetLog = new Button
+            {
+                Text     = Loc.T("result_openesetlog"),
+                Location = new Point(176, 278),
+                Size     = new Size(150, 32),
+                Enabled  = esetLog != null,
+            };
+            btnEsetLog.Click += (s, e) =>
+            {
+                try { if (esetLog != null) Process.Start("notepad.exe", esetLog); } catch { }
+            };
+            Controls.Add(btnEsetLog);
+
+            var btnRestoreNet = new Button
+            {
+                Text     = Loc.T("result_restorenet"),
+                Location = new Point(336, 278),
+                Size     = new Size(188, 32),
+                Enabled  = Program.LatestNetworkBackupPath() != null,
+            };
+            btnRestoreNet.Click += (s, e) =>
+            {
+                bool ok = Program.RestoreNetwork();
+                MessageBox.Show(Loc.T(ok ? "restored_ok" : "restored_fail"),
+                    Loc.T("result_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+            Controls.Add(btnRestoreNet);
+
+            // Row 2: report + close.
             var btnReport = new Button
             {
                 Text     = Loc.T("btn_report"),
-                Location = new Point(176, 284),
-                Size     = new Size(180, 32),
+                Location = new Point(16, 320),
+                Size     = new Size(200, 32),
             };
             btnReport.Click += (s, e) => Program.OpenIssues();
             Controls.Add(btnReport);
@@ -99,7 +130,7 @@ namespace frmesetunins
             var btnClose = new Button
             {
                 Text         = Loc.T("result_close"),
-                Location     = new Point(424, 284),
+                Location     = new Point(444, 320),
                 Size         = new Size(80, 32),
                 DialogResult = DialogResult.OK,
             };
