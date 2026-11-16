@@ -80,7 +80,7 @@ namespace frmesetunins
             Controls.Add(chkSelect);
 
             chkClean = new CheckBox { Location = new Point(16, 270), AutoSize = true,
-                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular) };
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Regular), Checked = true };
             Controls.Add(chkClean);
 
             btnAbort = new Button
