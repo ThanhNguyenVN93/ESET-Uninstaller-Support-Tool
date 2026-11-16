@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -30,8 +31,10 @@ namespace frmesetunins
         private const string CleanLeftoversVal = "CleanLeftovers";
         private const string ArmedVal         = "Armed";
         private const string AttemptsVal      = "Attempts";
+        private const string ArmTimeVal       = "ArmTime";
 
         private const int MaxSafeModeAttempts = 3;
+        private const int StaleArmHours       = 6;
 
         internal const string EsetUninstallerUrl =
             "https://download.eset.com/com/eset/tools/installers/eset_apps_remover/latest/uninstaller.exe";
@@ -198,7 +201,7 @@ namespace frmesetunins
             }
         }
 
-        private static string GetArgValue(string[] args, string prefix)
+        internal static string GetArgValue(string[] args, string prefix)
         {
             if (args != null)
                 foreach (string a in args)
@@ -221,6 +224,7 @@ namespace frmesetunins
             SetState(UninstallModeVal, interactive ? "select" : "force");
             SetState(CleanLeftoversVal, cleanLeftovers ? "1" : "0");
             SetState(ArmedVal, "1");
+            SetState(ArmTimeVal, DateTime.UtcNow.ToBinary().ToString());
 
             RunSysCmd("bcdedit.exe", "/set {current} safeboot minimal");
             RunSysCmd("bcdedit.exe", "/set {current} safebootalternateshell yes");
@@ -253,6 +257,70 @@ namespace frmesetunins
         internal static void OpenLogFolder()
         {
             try { Process.Start("explorer.exe", "/select,\"" + LogFilePath + "\""); }
+            catch { }
+        }
+
+        // Verify the uninstaller baked into this exe is validly ESET-signed.
+        // Best-effort, used as a startup integrity check.
+        internal static bool ValidateEmbeddedUninstaller(out string info)
+        {
+            info = "";
+            string tmp = Path.Combine(Path.GetTempPath(), "frmesetunins_embedded_check.exe");
+            try
+            {
+                using (var s = Assembly.GetExecutingAssembly()
+                                       .GetManifestResourceStream("frmesetunins.uninstaller.exe"))
+                {
+                    if (s == null) { info = "missing"; return false; }
+                    using (var fs = new FileStream(tmp, FileMode.Create, FileAccess.Write))
+                        s.CopyTo(fs);
+                }
+                string signer;
+                bool ok = Verify.IsSignedByEset(tmp, out signer);
+                info = "signer=" + signer + " sha256=" + Verify.Sha256(tmp);
+                return ok;
+            }
+            catch (Exception ex) { info = ex.Message; return false; }
+            finally { try { if (File.Exists(tmp)) File.Delete(tmp); } catch { } }
+        }
+
+        // One-click diagnostics bundle: zips the logs, network backup and an
+        // environment summary so the user can attach it to a bug report.
+        internal static string CollectDiagnostics()
+        {
+            string stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string dest;
+            try { dest = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "frmesetunins_diag_" + stamp + ".zip"); }
+            catch { dest = Path.Combine(Path.GetTempPath(), "frmesetunins_diag_" + stamp + ".zip"); }
+
+            try
+            {
+                if (File.Exists(dest)) File.Delete(dest);
+                using (var z = ZipFile.Open(dest, ZipArchiveMode.Create))
+                {
+                    AddToZip(z, LogFilePath,            "frmesetunins.log");
+                    AddToZip(z, LogFilePath + ".old",   "frmesetunins.log.old");
+                    AddToZip(z, LatestEsetLogPath(),    "ESETUninstaller.log");
+                    AddToZip(z, LatestNetworkBackupPath(), "NetworkSettings.txt");
+
+                    var sb = new StringBuilder();
+                    sb.AppendLine("Tool version : " + AppVersion);
+                    sb.AppendLine("OS           : " + Environment.OSVersion);
+                    sb.AppendLine("64-bit OS/proc: " + Environment.Is64BitOperatingSystem + " / " + Environment.Is64BitProcess);
+                    sb.AppendLine("Boot mode    : " + SystemInformation.BootMode);
+                    sb.AppendLine("ESET snapshot: " + EsetStateSnapshot());
+                    var entry = z.CreateEntry("environment.txt");
+                    using (var w = new StreamWriter(entry.Open())) w.Write(sb.ToString());
+                }
+                Log("Diagnostics bundle: " + dest);
+                return dest;
+            }
+            catch (Exception ex) { Log("Diagnostics failed: " + ex.Message); return null; }
+        }
+
+        private static void AddToZip(ZipArchive z, string path, string entryName)
+        {
+            try { if (!string.IsNullOrEmpty(path) && File.Exists(path)) z.CreateEntryFromFile(path, entryName); }
             catch { }
         }
 
@@ -302,6 +370,25 @@ namespace frmesetunins
                     SetLastResult("error:Da thu qua " + MaxSafeModeAttempts + " lan trong Safe Mode.");
                     Environment.ExitCode = 2;
                     return;
+                }
+
+                // Overall timeout: if the arm is very old (e.g. the machine sat at
+                // the Safe Mode logon for hours), treat it as stale and bail out.
+                long armBin;
+                if (long.TryParse(GetState(ArmTimeVal), out armBin))
+                {
+                    try
+                    {
+                        var armedAt = DateTime.FromBinary(armBin);
+                        if ((DateTime.UtcNow - armedAt).TotalHours > StaleArmHours)
+                        {
+                            Log("ABORT: arm is stale (> " + StaleArmHours + "h old).");
+                            SetLastResult("error:Yeu cau da qua han (>" + StaleArmHours + " gio).");
+                            Environment.ExitCode = 2;
+                            return;
+                        }
+                    }
+                    catch { }
                 }
 
                 bool interactive    = GetState(UninstallModeVal)  == "select";
@@ -461,6 +548,16 @@ namespace frmesetunins
             string dest = Path.Combine(tempDir, "ESETUninstaller.exe");
             try
             {
+                // Make sure there is room to extract + run.
+                try
+                {
+                    var drive = new DriveInfo(Path.GetPathRoot(tempDir));
+                    if (drive.IsReady && drive.AvailableFreeSpace < 100L * 1024 * 1024)
+                        throw new IOException("Khong du dung luong dia trong (<100MB) de chay uninstaller.");
+                }
+                catch (IOException) { throw; }
+                catch { }
+
                 // Prefer the fresh copy staged (downloaded) in normal mode; fall
                 // back to the embedded resource when none is available (e.g. no
                 // network was reachable before the reboot).
@@ -687,7 +784,7 @@ namespace frmesetunins
             catch (Exception ex) { Log("Network restore failed: " + ex.Message); return false; }
         }
 
-        private static int ParseInt(string s)
+        internal static int ParseInt(string s)
         {
             int n;
             return int.TryParse(s, out n) ? n : 0;
@@ -922,9 +1019,27 @@ namespace frmesetunins
             }
         }
 
+        private const long LogMaxBytes = 1024 * 1024; // rotate past ~1 MB
+
         internal static void Log(string msg)
         {
-            try { File.AppendAllText(LogPath, DateTime.Now.ToString("s") + "  " + msg + Environment.NewLine); }
+            try
+            {
+                // Rotate the log so it can never grow without bound.
+                try
+                {
+                    var fi = new FileInfo(LogPath);
+                    if (fi.Exists && fi.Length > LogMaxBytes)
+                    {
+                        string old = LogPath + ".old";
+                        if (File.Exists(old)) File.Delete(old);
+                        File.Move(LogPath, old);
+                    }
+                }
+                catch { }
+
+                File.AppendAllText(LogPath, DateTime.Now.ToString("s") + "  " + msg + Environment.NewLine);
+            }
             catch { }
         }
 

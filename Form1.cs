@@ -18,6 +18,8 @@ namespace frmesetunins
         private Button   btnAbort;
         private CheckBox chkSelect;
         private CheckBox chkClean;
+        private ProgressBar pbWork;
+        private ToolTip  toolTip;
 
         private Timer  countdownTimer;
         private Timer  abortTimer;
@@ -140,7 +142,29 @@ namespace frmesetunins
             btnLang.Click += (s, ev) => { Loc.Toggle(); ApplyLanguage(); };
             Controls.Add(btnLang);
 
+            pbWork = new ProgressBar
+            {
+                Location = new Point(120, 134),
+                Size     = new Size(320, 14),
+                Style    = ProgressBarStyle.Marquee,
+                MarqueeAnimationSpeed = 30,
+                Visible  = false,
+            };
+            Controls.Add(pbWork);
+
+            toolTip = new ToolTip { AutoPopDelay = 8000, InitialDelay = 400, ReshowDelay = 100 };
+
             ApplyLanguage();
+
+            // Background integrity check of the embedded uninstaller (best-effort).
+            var vt = new System.Threading.Thread(() =>
+            {
+                string info;
+                bool ok = Program.ValidateEmbeddedUninstaller(out info);
+                Program.Log("Embedded uninstaller signed=" + ok + " " + info);
+            });
+            vt.IsBackground = true;
+            vt.Start();
 
             countdownTimer = new Timer { Interval = 1000 };
             countdownTimer.Tick += CountdownTimer_Tick;
@@ -160,6 +184,14 @@ namespace frmesetunins
             chkSelect.Text    = Loc.T("chk_select");
             chkClean.Text     = Loc.T("chk_clean");
             lblReminder.Text  = Loc.T("export_reminder") + "\n" + Loc.T("info_password");
+
+            if (toolTip != null)
+            {
+                toolTip.SetToolTip(btnAction,     Loc.T("tip_restart"));
+                toolTip.SetToolTip(btnNoSafeMode, Loc.T("tip_nosafemode"));
+                toolTip.SetToolTip(chkSelect,     Loc.T("tip_select"));
+                toolTip.SetToolTip(chkClean,      Loc.T("tip_clean"));
+            }
 
             if (phase == Phase.Idle)
             {
@@ -230,6 +262,7 @@ namespace frmesetunins
             {
                 lblCountdown.Visible = false;
                 SetIdleControls(false);
+                pbWork.Visible = true;
 
                 // Copy ourselves to local disk and point triggers there, so the
                 // relaunch works even from a network share (Safe Mode has no net).
@@ -261,6 +294,7 @@ namespace frmesetunins
             }
             catch (Exception ex)
             {
+                pbWork.Visible       = false;
                 lblStatus.Text       = Loc.T("err_prefix") + ex.Message;
                 lblCountdown.Visible = true;
                 SetIdleControls(true);
@@ -281,6 +315,7 @@ namespace frmesetunins
             bool clean = chkClean.Checked;
             lblCountdown.Visible = false;
             SetIdleControls(false);
+            pbWork.Visible = true;
             lblStatus.Text = Loc.T("working");
 
             var t = new System.Threading.Thread(() =>
@@ -308,6 +343,7 @@ namespace frmesetunins
         private void EnterAbortPhase()
         {
             phase = Phase.Aborting;
+            pbWork.Visible        = false;
             lblReminder.Visible   = false;
             lblCountdown.Visible  = false;
             btnAction.Visible     = false;

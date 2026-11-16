@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>frmesetunins.Tests</AssemblyName>
+    <RootNamespace>frmesetunins.Tests</RootNamespace>
+    <LangVersion>7.3</LangVersion>
+    <IsPackable>false</IsPackable>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="MSTest.TestAdapter" Version="3.6.1" />
+    <PackageReference Include="MSTest.TestFramework" Version="3.6.1" />
+  </ItemGroup>
+
+  <!-- Reference the already-built main executable as a library. CI builds the
+       main project first, then runs these tests. -->
+  <ItemGroup>
+    <Reference Include="ESET Uninstaller Support Tool">
+      <HintPath>..\bin\Release\ESET Uninstaller Support Tool.exe</HintPath>
+    </Reference>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+</Project>

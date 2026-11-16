@@ -1,5 +1,8 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+
+[assembly: InternalsVisibleTo("frmesetunins.Tests")]
 
 [assembly: AssemblyTitle("ESET Uninstaller Support Tool")]
 [assembly: AssemblyDescription("Automatically uninstalls ESET in Safe Mode and reverts to normal boot.")]

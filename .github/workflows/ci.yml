@@ -89,6 +89,10 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
+      - name: Run unit tests
+        shell: pwsh
+        run: dotnet test tests/Tests.csproj -c Release --nologo
+
       - name: Locate built executable
         id: artifact
         shell: pwsh

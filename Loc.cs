@@ -41,6 +41,12 @@ namespace frmesetunins
             return table.TryGetValue(key, out v) ? v : key;
         }
 
+        // Exposed for tests: the key set of each language table.
+        internal static System.Collections.Generic.ICollection<string> Keys(Lang lang)
+        {
+            return (lang == Lang.Vi ? Vi : En).Keys;
+        }
+
         private static readonly Dictionary<string, string> Vi = new Dictionary<string, string>
         {
             { "app_title",        "Công cụ hỗ trợ gỡ ESET" },
@@ -72,6 +78,12 @@ namespace frmesetunins
             { "help_title",       "Hướng dẫn dòng lệnh" },
             { "help_text",        "ESET Uninstaller Support Tool\n\nTham số dòng lệnh:\n  --auto            Không giao diện, tự vào Safe Mode\n  --select          Chọn sản phẩm ESET thủ công\n  --cleanleftovers  Dọn file/service ESET còn sót\n  --password=<mk>   Tự động đăng nhập (mật khẩu Windows)\n  --nosafemode      Gỡ ngay trong Windows bình thường (không reboot)\n  --help            Hiện trợ giúp này\n\nMã thoát: 0=xong, 1=còn ESET, 2=lỗi, 3=không có ESET" },
             { "about_text",       "ESET Uninstaller Support Tool\nPhiên bản {0}\n\nTự động gỡ ESET trong Safe Mode.\nGiấy phép MIT.\n\n{1}" },
+            { "tip_restart",      "Khởi động lại vào Safe Mode rồi tự gỡ ESET (khuyên dùng)." },
+            { "tip_nosafemode",   "Gỡ ngay trong Windows bình thường. Cần tắt Self-Defense/HIPS trước." },
+            { "tip_select",       "Hiện menu để tự chọn sản phẩm ESET cần gỡ (thay vì gỡ tất cả)." },
+            { "tip_clean",        "Nếu còn sót, xóa service + thư mục ESET. Có rủi ro — chỉ bật khi cần." },
+            { "result_diag",      "Gom log chẩn đoán" },
+            { "diag_done",        "Đã tạo gói chẩn đoán:\n{0}" },
             { "status_downloading","Đang tải ESET Uninstaller mới nhất..." },
             { "status_preparing", "Đang chuẩn bị khởi động lại vào Safe Mode..." },
             { "err_prefix",       "Lỗi: " },
@@ -127,6 +139,12 @@ namespace frmesetunins
             { "help_title",       "Command-line help" },
             { "help_text",        "ESET Uninstaller Support Tool\n\nCommand-line flags:\n  --auto            No UI; arm + reboot into Safe Mode\n  --select          Pick the ESET product manually\n  --cleanleftovers  Remove leftover ESET files/services\n  --password=<pwd>  Unattended autologon (Windows password)\n  --nosafemode      Uninstall now in normal Windows (no reboot)\n  --help            Show this help\n\nExit codes: 0=done, 1=still present, 2=error, 3=no ESET" },
             { "about_text",       "ESET Uninstaller Support Tool\nVersion {0}\n\nAutomatically removes ESET in Safe Mode.\nMIT License.\n\n{1}" },
+            { "tip_restart",      "Restart into Safe Mode and remove ESET automatically (recommended)." },
+            { "tip_nosafemode",   "Remove now in normal Windows. Disable Self-Defense/HIPS first." },
+            { "tip_select",       "Show a menu to pick which ESET product to remove (instead of all)." },
+            { "tip_clean",        "If leftovers remain, delete ESET services + folders. Risky — enable only if needed." },
+            { "result_diag",      "Collect diagnostics" },
+            { "diag_done",        "Diagnostics bundle created:\n{0}" },
             { "status_downloading","Downloading the latest ESET Uninstaller..." },
             { "status_preparing", "Preparing to restart into Safe Mode..." },
             { "err_prefix",       "Error: " },

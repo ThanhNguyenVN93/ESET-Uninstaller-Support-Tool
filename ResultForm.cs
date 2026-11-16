@@ -50,7 +50,7 @@ namespace frmesetunins
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MinimizeBox     = false;
             MaximizeBox     = false;
-            ClientSize      = new Size(540, 380);
+            ClientSize      = new Size(540, 414);
 
             var lblHead = new Label
             {
@@ -117,12 +117,12 @@ namespace frmesetunins
             };
             Controls.Add(btnRestoreNet);
 
-            // Row 2: report + open folder + close.
+            // Row 2: report + open folder + diagnostics.
             var btnReport = new Button
             {
                 Text     = Loc.T("btn_report"),
                 Location = new Point(16, 320),
-                Size     = new Size(190, 32),
+                Size     = new Size(170, 32),
             };
             btnReport.Click += (s, e) => Program.OpenIssues();
             Controls.Add(btnReport);
@@ -130,17 +130,35 @@ namespace frmesetunins
             var btnFolder = new Button
             {
                 Text     = Loc.T("result_openfolder"),
-                Location = new Point(216, 320),
+                Location = new Point(196, 320),
                 Size     = new Size(150, 32),
             };
             btnFolder.Click += (s, e) => Program.OpenLogFolder();
             Controls.Add(btnFolder);
 
+            var btnDiag = new Button
+            {
+                Text     = Loc.T("result_diag"),
+                Location = new Point(356, 320),
+                Size     = new Size(168, 32),
+            };
+            btnDiag.Click += (s, e) =>
+            {
+                string zip = Program.CollectDiagnostics();
+                if (zip != null)
+                {
+                    try { Process.Start("explorer.exe", "/select,\"" + zip + "\""); } catch { }
+                    MessageBox.Show(string.Format(Loc.T("diag_done"), zip),
+                        Loc.T("result_title"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            };
+            Controls.Add(btnDiag);
+
             var btnClose = new Button
             {
                 Text         = Loc.T("result_close"),
-                Location     = new Point(444, 320),
-                Size         = new Size(80, 32),
+                Location     = new Point(424, 364),
+                Size         = new Size(100, 34),
                 DialogResult = DialogResult.OK,
             };
             Controls.Add(btnClose);

@@ -5,6 +5,16 @@ phiên bản theo [SemVer](https://semver.org/lang/vi/).
 
 ## [Unreleased]
 
+### Added — Vòng hoàn thiện 2
+- **Overall timeout**: bỏ qua yêu cầu "quá hạn" (>6 giờ) + loop-guard sẵn có.
+- **Kiểm tra dung lượng đĩa** (<100MB) trước khi extract uninstaller.
+- **Log rotation** (xoay khi >1MB) để log không phình vô hạn.
+- **Xác minh chữ ký bản nhúng** lúc khởi động (nền, ghi log).
+- **Thanh tiến trình (marquee)** khi chạy lâu; **tooltip** cho các tùy chọn.
+- **Gom log chẩn đoán 1-click** → file ZIP (log + ESET log + network + môi trường).
+- **Unit test** (MSTest) + chạy trong CI; **.editorconfig**, **SECURITY.md**,
+  mẫu Issue/PR của GitHub.
+
 ### Added — Độ tin cậy & hoàn thiện
 - Bắt mọi lỗi không mong muốn (global exception handler) → ghi log + hộp thoại thân thiện thay vì crash.
 - Chống chạy nhiều bản (single-instance) ở chế độ giao diện.
